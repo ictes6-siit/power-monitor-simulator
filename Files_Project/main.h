@@ -39,10 +39,8 @@
 #define LED(A,B)	(B==ON) ? GPIO_BitSet(GPIOD->ODR, A) : GPIO_BitRes(GPIOD->ODR, A)
 
 static const uint16_t SAMPLER = 1000;
-static const float CCR1_startDeg = 0;
-static const float CCR2_startDeg = 120*PI/180;
-static const float CCR3_startDeg = 240*PI/180;
 static const float _2PI_BY_SAMPLER = 2*PI/(float)SAMPLER;
+
 
 /** 
 	*	\brief  Structure type to create or config dutycycle table.
@@ -55,6 +53,7 @@ typedef struct
 	uint16_t max;
 	uint8_t numOfPtrn;					// number of pattern
 	uint8_t crrPtrn;						// current pattern index
+	float sin_table[SAMPLER];
 	float offset;
 	float normAmp;				
 	float sagAmp;				
@@ -83,7 +82,6 @@ typedef struct
 	uint8_t ptrnIdx;
 	bool callFromUsr;
 } CallingGenDutyTab_Type;
-
 
 
 /** 
@@ -123,7 +121,7 @@ void TimingDelay_Decrement(void);
 void Delay(__IO uint32_t nTime, DelayUnit_Type unit);
 
 void CCRTab_init( CCRTab_Type *CCRTab, uint16_t min, uint16_t max, float amp, float offset, float startDeg );
-uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , float startDeg, CCRTabType_Type tabType);
+uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabType);
 CCRTab_Type* getCCRTab(uint8_t channel);
 CallingGenDutyTab_Type* getGenDutyTabCaller(uint8_t channel);
 void genDutyTabPolling(void);	// for main loop call

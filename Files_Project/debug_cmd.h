@@ -25,18 +25,6 @@
 #define CMD_STOP_PATTERN 		"stoppattern"
 
 
-/* struct define -------------------------------------------------------------*/
-///** 
-//  * @brief  USART1(Debug) communication state type enumeration 
-//  */  
-//enum
-//{ 
-//	USART1_WAIT,
-//	USART1_RECEIVE,
-//	USART1_PROCESS
-//}USART1State = USART1_WAIT;
-
-
 /* Function prototype define -------------------------------------------------*/
 void interpretCMD(volatile char *msg, uint16_t len);
 

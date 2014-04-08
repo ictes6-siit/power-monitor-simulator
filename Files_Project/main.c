@@ -17,7 +17,7 @@
 volatile char usart1_received_string[MAX_USART1_STRLEN+1]; // this will hold the recieved string
 uint16_t usart1_str_cnt = 0; // this counter is used to determine the string length
 
-const uint16_t TIM3_period = 1679; // 1679 for 1000x (50k); 4665 for 360x (18k)
+const uint16_t TIM3_period = 1679; // 1679 for 1000x (50kHz)
 uint16_t TIM3_CCR_val_idx = 0;
 
 CCRTab_Type CCR1_tab;
@@ -42,17 +42,17 @@ char sendingMsg[70] = {'\0'};
 
 /*--------------- main function ------------------------------------------------------------*/
 int main(void) 
-{	
+{		
+	
 	// initial Duty-cycle table for the 3 phases
-	CCRTab_init( &CCR1_tab, 0, TIM3_period, TIM3_period/2.0f, TIM3_period/2.0f, CCR1_startDeg );
-	CCRTab_init( &CCR2_tab, 0, TIM3_period, TIM3_period/2.0f, TIM3_period/2.0f, CCR2_startDeg );
-	CCRTab_init( &CCR3_tab, 0, TIM3_period, TIM3_period/2.0f, TIM3_period/2.0f, CCR3_startDeg );
-	
-	
+	CCRTab_init( &CCR1_tab, 0, TIM3_period, TIM3_period/2.0f, TIM3_period/2.0f, 0 );
+	CCRTab_init( &CCR2_tab, 0, TIM3_period, TIM3_period/2.0f, TIM3_period/2.0f, 120*PI/180 );
+	CCRTab_init( &CCR3_tab, 0, TIM3_period, TIM3_period/2.0f, TIM3_period/2.0f, 240*PI/180 );
+		
 	// init systems
 	init();	
 	
-	USART_puts( USART1, "initiated\n" );
+	USART_puts( USART1, "Initiated\n" );
 
   while (1)
 	{
@@ -61,26 +61,19 @@ int main(void)
 }
 
 void init() 
-{
+{	
 	Peripheral_MCU_Config();
 	
 	initExtInterrupt();		//USR BTN
 	initSysTickClk();
 	init_USART1(115200); 		//PB6 TX, PB7 RX	 (debug port)
-	
-//	TIM2_Config();				
+					
 	TIM3_Config();				
 	TIM3_PWM_Config(TIM3_period);		
-
-//	InitADC1( ADC1_DR_ADDRESS, &ADCConvertedValue );
-//	
-//	ADC_SoftwareStartConv(ADC1);	// Start ADC1 Software Conversion
-
 }
 
-/*--------------- I/O PORT INITIAL ---------------------------------------------------------*/
 
-/*--------------- USART --------------------------------------------------------------------*/
+/*--------------- USART -----------------------------------------------------------------------------------*/
 /**
   * @brief  used to transmit a string of characters via the USART specified in USARTx.
   * @param  USARTx: can be any of the USARTs e.g. USART1, USART2 etc.
@@ -243,7 +236,7 @@ void USART1_IRQHandler(void)
 
 
 
-/*--------------- EXTI --------------------------------------------------------------------*/
+/*--------------- EXTI -------------------------------------------------------------------------------------*/
 /**
   * @brief  Configures EXTI Line0 (connected to PA0 pin USER_BUTTON) in interrupt mode
   * @param  None
@@ -315,7 +308,7 @@ void EXTI0_IRQHandler(void)
 }
 
 
-/*--------------- TIMER --------------------------------------------------------------------*/
+/*--------------- TIMER ------------------------------------------------------------------------------------*/
 /**
   * @brief  Configure the TIM3 Ouput Channels.
   * @param  None
@@ -329,29 +322,28 @@ void TIM3_Config(void)
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
   /* GPIOC and GPIOB clock enable */
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);// | RCC_AHB1Periph_GPIOB, ENABLE);
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA | RCC_AHB1Periph_GPIOB, ENABLE);
   
-  /* GPIOC Configuration: TIM3 CH1 (PC6), TIM3 CH2 (PC7) and TIM3 CH3 (PC8) */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7  | GPIO_Pin_8 ;
+  /* GPIOC Configuration: TIM3 CH1 (PA6), TIM3 CH2 (PA7) */ 
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
   GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP ;
-  GPIO_Init(GPIOC, &GPIO_InitStructure); 
+  GPIO_Init(GPIOA, &GPIO_InitStructure); 
   
-//  /* GPIOB Configuration:  TIM3 CH3 (PC8) and TIM3 CH4 (PC9) */
-//  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;// | GPIO_Pin_9;
-//  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-//  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
-//  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-//  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP ;
-//  GPIO_Init(GPIOB, &GPIO_InitStructure); 
+  /* GPIOA Configuration:  TIM3 CH3 (PB0) */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP ;
+  GPIO_Init(GPIOB, &GPIO_InitStructure); 
 
   /* Connect TIM3 pins to AF2 */  
-  GPIO_PinAFConfig(GPIOC, GPIO_PinSource6, GPIO_AF_TIM3);
-  GPIO_PinAFConfig(GPIOC, GPIO_PinSource7, GPIO_AF_TIM3); 
-  GPIO_PinAFConfig(GPIOC, GPIO_PinSource8, GPIO_AF_TIM3);
-//  GPIO_PinAFConfig(GPIOB, GPIO_PinSource1, GPIO_AF_TIM3); 
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource6, GPIO_AF_TIM3);
+  GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_TIM3); 
+  GPIO_PinAFConfig(GPIOB, GPIO_PinSource0, GPIO_AF_TIM3);	
 }
 
 /**
@@ -433,7 +425,7 @@ void TIM3_IRQHandler(void)
 
 
 
-/*--------------- GENERAL FUNCTIONS ------------------------------------------------------*/
+/*--------------- GENERAL FUNCTIONS ------------------------------------------------------------------------*/
 void Delay(__IO uint32_t nTime, DelayUnit_Type unit)
 {
 	switch ( unit )
@@ -466,8 +458,12 @@ void TimingDelay_Decrement(void)
 
 
 
+
+/*--------------- PWM GENERATOR FUNCTIONS ------------------------------------------------------------------*/
 void CCRTab_init( CCRTab_Type *CCRTab, uint16_t min, uint16_t max, float amp, float offset, float startDeg )
 {
+	uint16_t i;
+	
 	CCRTab->max = max;
 	CCRTab->min = min;
 	CCRTab->normAmp = amp;
@@ -478,7 +474,12 @@ void CCRTab_init( CCRTab_Type *CCRTab, uint16_t min, uint16_t max, float amp, fl
 	CCRTab->isPattern = false;
 	CCRTab->isSag = false;
 	
-	genDutyTab(CCRTab, 0, startDeg, TabType_Norminal);
+	for ( i=0; i<SAMPLER; i++ )
+	{
+		CCRTab->sin_table[i] = sin( i*_2PI_BY_SAMPLER ) + startDeg;			
+	}
+	
+	genDutyTab(CCRTab, 0, TabType_Norminal);
 }
 
 /**
@@ -486,10 +487,9 @@ void CCRTab_init( CCRTab_Type *CCRTab, uint16_t min, uint16_t max, float amp, fl
   * @param  ...
   * @retval None
   */
-uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , float startDeg, CCRTabType_Type tabType)
+uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabType)
 {
 	int16_t i;
-	float deg;
 	uint16_t tmp, tabIdx = !CCRTab->crrTab;
 	uint8_t result = 0;
 
@@ -500,9 +500,7 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , float startDeg, CCRTab
 		case TabType_Norminal:
 			for ( i=0; i<SAMPLER; i++ )
 			{
-				deg = i*_2PI_BY_SAMPLER + startDeg;
-
-				tmp = CCRTab->normAmp*sin(deg) + CCRTab->offset;
+				tmp = CCRTab->normAmp*CCRTab->sin_table[i] + CCRTab->offset;
 				if ( tmp < CCRTab->min )
 						CCRTab->table[tabIdx][i] = CCRTab->min;
 				else if ( tmp > CCRTab->max )
@@ -524,9 +522,7 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , float startDeg, CCRTab
 			{
 				for ( i=0; i<SAMPLER; i++ )
 				{
-					deg = i*_2PI_BY_SAMPLER + startDeg;
-
-					tmp = CCRTab->sagAmp*sin(deg) + CCRTab->offset;
+					tmp = CCRTab->sagAmp*CCRTab->sin_table[i] + CCRTab->offset;
 					if ( tmp < CCRTab->min )
 							CCRTab->table[tabIdx][i] = CCRTab->min;
 					else if ( tmp > CCRTab->max )
@@ -546,9 +542,7 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , float startDeg, CCRTab
 			{	
 				for ( i=0; i<SAMPLER; i++ )
 				{
-					deg = i*_2PI_BY_SAMPLER + startDeg;
-
-					tmp = CCRTab->ptrnAmp[ptrnIdx]*sin(deg) + CCRTab->offset;
+					tmp = CCRTab->ptrnAmp[ptrnIdx]*CCRTab->sin_table[i] + CCRTab->offset;
 					if ( tmp < CCRTab->min )
 							CCRTab->table[tabIdx][i] = CCRTab->min;
 					else if ( tmp > CCRTab->max )
@@ -578,7 +572,7 @@ void genDutyTabPolling(void)
 	//<-- CCR1_CallGDT -------------------------------------------------------------
 	if ( CCR1_CallGDT.isCall )
 	{
-		genDutyTab_result = genDutyTab( &CCR1_tab, CCR1_CallGDT.ptrnIdx, CCR1_startDeg, CCR1_CallGDT.tabType );
+		genDutyTab_result = genDutyTab( &CCR1_tab, CCR1_CallGDT.ptrnIdx, CCR1_CallGDT.tabType );
 		
 		if ( CCR1_CallGDT.callFromUsr )
 		{
@@ -636,7 +630,7 @@ void genDutyTabPolling(void)
 	//<-- CCR2_CallGDT -------------------------------------------------------------
 	if ( CCR2_CallGDT.isCall )
 	{
-		genDutyTab_result = genDutyTab( &CCR2_tab, CCR2_CallGDT.ptrnIdx, CCR2_startDeg, CCR2_CallGDT.tabType );
+		genDutyTab_result = genDutyTab( &CCR2_tab, CCR2_CallGDT.ptrnIdx, CCR2_CallGDT.tabType );
 				
 		if ( CCR2_CallGDT.callFromUsr )
 		{
@@ -693,7 +687,7 @@ void genDutyTabPolling(void)
 	//<-- CCR3_CallGDT -------------------------------------------------------------
 	if ( CCR3_CallGDT.isCall )
 	{
-		genDutyTab_result = genDutyTab( &CCR3_tab, CCR3_CallGDT.ptrnIdx, CCR3_startDeg, CCR3_CallGDT.tabType );
+		genDutyTab_result = genDutyTab( &CCR3_tab, CCR3_CallGDT.ptrnIdx, CCR3_CallGDT.tabType );
 		
 		if ( CCR3_CallGDT.callFromUsr )
 		{			

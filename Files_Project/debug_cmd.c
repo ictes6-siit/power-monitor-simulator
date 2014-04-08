@@ -13,10 +13,10 @@
 #include "main.h"
 #include "strtod.h"
 
-int fputc(int ch, FILE *f)
-{
-  return ITM_SendChar(ch);
-}
+//int fputc(int ch, FILE *f)
+//{
+//  return ITM_SendChar(ch);
+//}
 
 void interpretCMD(volatile char *msg, uint16_t len){
 	
