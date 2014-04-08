@@ -476,7 +476,7 @@ void CCRTab_init( CCRTab_Type *CCRTab, uint16_t min, uint16_t max, float amp, fl
 	
 	for ( i=0; i<SAMPLER; i++ )
 	{
-		CCRTab->sin_table[i] = sin( i*_2PI_BY_SAMPLER ) + startDeg;			
+		CCRTab->sin_table[i] = sin( i*_2PI_BY_SAMPLER + startDeg );			
 	}
 	
 	genDutyTab(CCRTab, 0, TabType_Norminal);
