@@ -25,7 +25,6 @@ void interpretCMD(volatile char *msg, uint16_t len){
   char **argv = (char**) malloc( sizeof(char*) ); // allocate for 1 argv at first
 	uint8_t argc;
 	uint8_t i, j, k, numOfPtrn;
-	uint32_t l;
 	
 	char text[70];
 	
@@ -62,11 +61,11 @@ void interpretCMD(volatile char *msg, uint16_t len){
 	/* Distinguish cmd and do operation */
 	if ( strcmp( argv[0], CMD_GEN_SAG)==0 )
 	{
-		if ( argc == 4 )
+		if ( argc == 4 && isInteger(argv[1]) && isFloat(argv[2]) && isInteger(argv[3]) )
 		{
 			getCCRTab(atoi(argv[1]))->sagAmp = getCCRTab(atoi(argv[1]))->normAmp*atof(argv[2]);	// initial amplitude
 			getCCRTab(atoi(argv[1]))->sagDuration = atoi(argv[3]);									// initial sag duration
-			
+						
 			// generating the sag table for the given channel
 			switch ( atoi(argv[1]) )	
 			{
@@ -88,6 +87,11 @@ void interpretCMD(volatile char *msg, uint16_t len){
 				default: 	
 					sprintf((char*)text, "Generating sag:\n - Has no Ch. %s!!\n", argv[1]);
 					USART_puts(USART1, text);
+					// releasing memory allocation
+					free(msgBuf);
+					for ( i=0; i<argc; i++ )
+						free(argv[i]);
+					free(argv);
 					return;
 			}			
 		}
@@ -96,7 +100,7 @@ void interpretCMD(volatile char *msg, uint16_t len){
 	}
 	else if ( strcmp(argv[0], CMD_STOP_SAG)==0 )
 	{
-		if ( argc == 2 )
+		if ( argc == 2 && isInteger(argv[1]) )
 		{
 			if ( stopSag( atoi(argv[1])) )
 				sprintf((char*)text, "Stoping sag:\n - Ch %s sag stoped\n", argv[1]);
@@ -110,9 +114,24 @@ void interpretCMD(volatile char *msg, uint16_t len){
 	}
 	else if ( strcmp(argv[0], CMD_GEN_PATTERN)==0 )
 	{
-		if ( argc >= 4 && argc%2 == 0 )
+		if ( argc >= 4 && argc%2 == 0 && isInteger(argv[1]) )
 		{			
 			numOfPtrn = (argc/2)-1;
+			
+			// check whether valid input or not
+			for ( i=0; i<numOfPtrn; i++ )
+			{
+				if ( !isFloat(argv[(i+1)*2]) || !isInteger(argv[(i+1)*2+1]) ) 
+				{
+					USART_puts(USART1, "Generating pattern:\n - Invalid usage!\nUsage: pattern [CH] [PERCENTAGE_1] [DURATION_1] ... [PERCENTAGE_n] [DURATION_n]\n");
+					// releasing memory allocation
+					free(msgBuf);
+					for ( i=0; i<argc; i++ )
+						free(argv[i]);
+					free(argv);
+					return;
+				}
+			}
 			
 			getCCRTab(atoi(argv[1]))->numOfPtrn = numOfPtrn;
 			
@@ -132,8 +151,7 @@ void interpretCMD(volatile char *msg, uint16_t len){
 			for ( i=0; i<numOfPtrn; i++ )
 			{
 				getCCRTab(atoi(argv[1]))->ptrnAmp[i] = getCCRTab(atoi(argv[1]))->normAmp*atof(argv[(i+1)*2]);
-				l = atoi(argv[(i+1)*2+1]);
-				getCCRTab(atoi(argv[1]))->ptrnDuration[i] = (l > 50) ? l-45 : l;	// cal genDutyTab time is about 45 ms
+				getCCRTab(atoi(argv[1]))->ptrnDuration[i] = atoi(argv[(i+1)*2+1]);
 			}
 			
 			// generating pattern table for the given channel 
@@ -160,6 +178,11 @@ void interpretCMD(volatile char *msg, uint16_t len){
 				default: 
 					sprintf((char*)text, "Generating pattern:\n - Has no Ch. %s!!\n", argv[1]);
 					USART_puts(USART1, text);
+					// releasing memory allocation
+					free(msgBuf);
+					for ( i=0; i<argc; i++ )
+						free(argv[i]);
+					free(argv);
 					return;
 			}			
 		}
@@ -168,7 +191,7 @@ void interpretCMD(volatile char *msg, uint16_t len){
 	}
 	else if ( strcmp(argv[0], CMD_STOP_PATTERN)==0 )
 	{
-		if ( argc == 2 )
+		if ( argc == 2 && isInteger(argv[1]) )
 		{			
 			if ( stopPattern( atoi(argv[1])) )
 				sprintf((char*)text, "Stoping pattern:\n - Ch %s pattern stoped\n", argv[1]);
@@ -200,3 +223,18 @@ void interpretCMD(volatile char *msg, uint16_t len){
 		free(argv[i]);
 	free(argv);
 }
+
+
+
+bool isInteger(const char * s)
+{   
+	uint16_t num = atoi(s);
+	return !(num == 0 && s[0] != '0');
+}
+
+bool isFloat(const char * s)
+{   
+	float num = atof(s);
+	return !(num == 0 && s[0] != '0');
+}
+

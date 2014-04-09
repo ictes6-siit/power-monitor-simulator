@@ -14,6 +14,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx.h"
+#include "stdbool.h"
 
 
 /* CMD list define -----------------------------------------------------------*/
@@ -27,5 +28,7 @@
 
 /* Function prototype define -------------------------------------------------*/
 void interpretCMD(volatile char *msg, uint16_t len);
+bool isInteger(const char * s);
+bool isFloat(const char * s);
 
 #endif // __DEBUG_CMD_H
