@@ -41,29 +41,6 @@
 static const uint16_t SAMPLER = 1000;
 static const float _2PI_BY_SAMPLER = 2*PI/(float)SAMPLER;
 
-
-/** 
-	*	\brief  Structure type to create or config dutycycle table.
-  */
-typedef struct
-{
-	uint16_t table[2][SAMPLER];	//	CCR value tables
-	uint8_t crrTab;							// current table that using to generate PWM
-	uint16_t min;
-	uint16_t max;
-	uint8_t numOfPtrn;					// number of pattern
-	uint8_t crrPtrn;						// current pattern index
-	float sin_table[SAMPLER];
-	float offset;
-	float normAmp;				
-	float sagAmp;				
-	float *ptrnAmp;							// array of pattern amplitude
-	bool isSag;	
-	bool isPattern;	
-	__IO uint32_t *ptrnDuration;
-	__IO uint32_t sagDuration;
-} CCRTab_Type;
-
 /** 
 	*	\brief  Dutycycle table type type enumeration.
   */
@@ -73,6 +50,18 @@ typedef enum
 	TabType_Sag,
 	TabType_Pattern
 } CCRTabType_Type;
+
+/** 
+	*	\brief  Dutycycle table state type enumeration.
+  */
+typedef enum
+{
+	State_Norminal,
+	State_Sag,
+	State_StopingSag,
+	State_Pattern,
+	State_StopingPattern
+} CCRTabState_Type;
 
 
 typedef struct
@@ -93,6 +82,29 @@ typedef enum
 	DelayUnit_ms,	
 	DelayUnit_s
 }	DelayUnit_Type;
+
+
+/** 
+	*	\brief  Structure type to create or config dutycycle table.
+  */
+typedef struct
+{
+	uint16_t table[2][SAMPLER];	//	CCR value tables
+	uint8_t crrTab;							// current table that using to generate PWM
+	uint16_t min;
+	uint16_t max;
+	uint8_t numOfPtrn;					// number of pattern
+	uint8_t crrPtrn;						// current pattern index
+	float sin_table[SAMPLER];
+	float offset;
+	float normAmp;				
+	float sagAmp;				
+	float *ptrnAmp;							// array of pattern amplitude
+	__IO uint32_t *ptrnDuration;
+	__IO uint32_t sagDuration;
+	CCRTabState_Type state;
+} CCRTab_Type;
+
 
 static __IO uint32_t TimingDelay;
 static __IO uint32_t UsrBtn_Debnce_cnt;

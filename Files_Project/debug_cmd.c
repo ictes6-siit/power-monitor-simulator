@@ -81,7 +81,7 @@ void interpretCMD(volatile char *msg, uint16_t len){
 					break;
 				case 3: 
 					getGenDutyTabCaller(3)->tabType = TabType_Sag;	
-					getGenDutyTabCaller(2)->callFromUsr = true;								
+					getGenDutyTabCaller(3)->callFromUsr = true;								
 					getGenDutyTabCaller(3)->isCall = true;	
 					break;
 				default: 	
@@ -136,9 +136,9 @@ void interpretCMD(volatile char *msg, uint16_t len){
 			getCCRTab(atoi(argv[1]))->numOfPtrn = numOfPtrn;
 			
 			// clear old pattern amp and duration, if exists
-			if ( getCCRTab(atoi(argv[1]))->isPattern )
+			if ( getCCRTab(atoi(argv[1]))->state == State_Pattern )
 			{				
-				getCCRTab(atoi(argv[1]))->isPattern = false;	// preventing change another pattern while update the table
+				getCCRTab(atoi(argv[1]))->state = State_StopingPattern;	// preventing change another pattern while update the table
 				free( getCCRTab(atoi(argv[1]))->ptrnAmp );
 				free( getCCRTab(atoi(argv[1]))->ptrnDuration );	
 			}

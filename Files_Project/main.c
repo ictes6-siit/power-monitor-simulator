@@ -471,8 +471,7 @@ void CCRTab_init( CCRTab_Type *CCRTab, uint16_t min, uint16_t max, float amp, fl
 	CCRTab->numOfPtrn = 0;
 	CCRTab->crrPtrn = 0;
 	CCRTab->crrTab = 1;
-	CCRTab->isPattern = false;
-	CCRTab->isSag = false;
+	CCRTab->state = State_Norminal;
 	
 	for ( i=0; i<SAMPLER; i++ )
 	{
@@ -508,15 +507,14 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabTyp
 				else
 						CCRTab->table[tabIdx][i] = tmp;
 			}			
-			CCRTab->crrTab = tabIdx;	// change current table that using to generate PWM		
-			CCR1_tab.isSag = false;		
-			CCR1_tab.isPattern = false;
+			CCRTab->crrTab = tabIdx;	// change current table that using to generate PWM	
+			CCRTab->state = State_Norminal;
 			break;
 		
 		case TabType_Sag:	
-			if ( CCRTab->isSag )				
+			if ( CCRTab->state == State_Sag || CCRTab->state == State_StopingSag )				
 				result = 1;				// nested sag!
-			else if ( CCRTab->isPattern )				
+			else if ( CCRTab->state == State_Pattern || CCRTab->state == State_StopingPattern )				
 				result = 2;				// CCR is now generating pattern!
 			else
 			{
@@ -531,12 +529,12 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabTyp
 							CCRTab->table[tabIdx][i] = tmp;
 				}	
 				CCRTab->crrTab = tabIdx;	// change current table that using to generate PWM
-				CCRTab->isSag = true;			
+				CCRTab->state = State_Sag;
 			}	
 			break;
 		
 		case TabType_Pattern:		
-			if ( CCRTab->isSag )				
+			if ( CCRTab->state == State_Sag || CCRTab->state == State_StopingSag )				
 				result = 3;				// CCR is now generating sag!
 			else
 			{	
@@ -552,7 +550,7 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabTyp
 				}
 				CCRTab->crrPtrn = ptrnIdx;
 				CCRTab->crrTab = tabIdx;	// change current table that using to generate PWM
-				CCRTab->isPattern = true;
+				CCRTab->state = State_Pattern;
 			}
 			break;
 		
@@ -586,13 +584,13 @@ void genDutyTabPolling(void)
 					switch ( genDutyTab_result ) // checking return status
 					{
 						case 0:
-							sprintf((char*)sendingMsg, "Generating sag:\n - Ch 1\n - Percentage %.2f %%\n - Duration %d ms\n", CCR1_tab.sagAmp/CCR1_tab.normAmp*100, CCR1_tab.sagDuration);
+							sprintf((char*)sendingMsg, "Generating sag:\n - CH 1\n - Percentage %.2f %%\n - Duration %d ms\n", CCR1_tab.sagAmp/CCR1_tab.normAmp*100, CCR1_tab.sagDuration);
 							break;
 						case 1:
 							sprintf((char*)sendingMsg, "Generating sag:\n - Cannot generate nested sag!\n");
 							break;
 						case 2:
-							sprintf((char*)sendingMsg, "Generating sag:\n - The system is generating pattern now!\n Please call stoppattern before\n");
+							sprintf((char*)sendingMsg, "Generating sag:\n - CH 1 is generating pattern now!\n Please call stoppattern before\n");
 							break;
 						default: break;
 					}
@@ -644,13 +642,13 @@ void genDutyTabPolling(void)
 					switch ( genDutyTab_result ) // checking return status
 					{
 						case 0:
-							sprintf((char*)sendingMsg, "Generating sag:\n - Ch 2\n - Percentage %.2f %%\n - Duration %d ms\n", CCR2_tab.sagAmp/CCR2_tab.normAmp*100, CCR2_tab.sagDuration);
+							sprintf((char*)sendingMsg, "Generating sag:\n - CH 2\n - Percentage %.2f %%\n - Duration %d ms\n", CCR2_tab.sagAmp/CCR2_tab.normAmp*100, CCR2_tab.sagDuration);
 							break;
 						case 1:
 							sprintf((char*)sendingMsg, "Generating sag:\n - Cannot generate nested sag!\n");
 							break;
 						case 2:
-							sprintf((char*)sendingMsg, "Generating sag:\n - The system is generating pattern now!\n Please call stoppattern before\n");
+							sprintf((char*)sendingMsg, "Generating sag:\n - CH 2 is generating pattern now!\n Please call stoppattern before\n");
 							break;
 						default: break;
 					}
@@ -701,17 +699,16 @@ void genDutyTabPolling(void)
 					switch ( genDutyTab_result ) // checking return status
 					{
 						case 0:
-							sprintf((char*)sendingMsg, "Generating sag:\n - Ch 3\n - Percentage %.2f %%\n - Duration %d ms\n", CCR3_tab.sagAmp/CCR3_tab.normAmp*100, CCR3_tab.sagDuration);
+							sprintf((char*)sendingMsg, "Generating sag:\n - CH 3\n - Percentage %.2f %%\n - Duration %d ms\n", CCR3_tab.sagAmp/CCR3_tab.normAmp*100, CCR3_tab.sagDuration);
 							break;
 						case 1:
 							sprintf((char*)sendingMsg, "Generating sag:\n - Cannot generate nested sag!\n");
 							break;
 						case 2:
-							sprintf((char*)sendingMsg, "Generating sag:\n - The system is generating pattern now!\n Please call stoppattern before\n");
+							sprintf((char*)sendingMsg, "Generating sag:\n - CH 3 is generating pattern now!\n Please call stoppattern before\n");
 							break;
 						default: break;
-					}
-								
+					}								
 					USART_puts(USART1, sendingMsg);
 					break;
 					
@@ -771,7 +768,7 @@ CallingGenDutyTab_Type* getGenDutyTabCaller(uint8_t channel)
 void sagTimer(void)
 {
 	//<------- Sag on CCR1 ----------------------------------
-  if ( CCR1_tab.isSag )
+  if ( CCR1_tab.state == State_Sag )
   { 
 		if ( CCR1_tab.sagDuration != 0x00 )
 			CCR1_tab.sagDuration--;
@@ -780,7 +777,7 @@ void sagTimer(void)
 			stopSag(1);	
 		}
   }
-	else if ( CCR1_tab.isPattern )
+	else if ( CCR1_tab.state == State_Pattern )
 	{		
 		if ( CCR1_SagPtrnDrtnCnt < CCR1_tab.ptrnDuration[CCR1_tab.crrPtrn] )
 			CCR1_SagPtrnDrtnCnt++;
@@ -797,14 +794,14 @@ void sagTimer(void)
 	}
 	
 	//<------- Sag on CCR2 ----------------------------------
-  if ( CCR2_tab.isSag )
+  if ( CCR2_tab.state == State_Sag )
   { 
 		if ( CCR2_tab.sagDuration != 0x00 )
 			CCR2_tab.sagDuration--;
 		else
 			stopSag(2);		
   }
-	else if ( CCR2_tab.isPattern )
+	else if ( CCR2_tab.state == State_Pattern )
 	{		
 		if ( CCR2_SagPtrnDrtnCnt < CCR2_tab.ptrnDuration[CCR2_tab.crrPtrn] )
 			CCR2_SagPtrnDrtnCnt++;
@@ -822,14 +819,14 @@ void sagTimer(void)
   
 	
 	//<------- Sag on CCR3 ----------------------------------
-  if ( CCR3_tab.isSag )
+  if ( CCR3_tab.state == State_Sag )
   { 
 		if ( CCR3_tab.sagDuration != 0x00 )
 			CCR3_tab.sagDuration--;
 		else
 			stopSag(3);		
   }
-	else if ( CCR3_tab.isPattern )
+	else if ( CCR3_tab.state == State_Pattern )
 	{		
 		if ( CCR3_SagPtrnDrtnCnt < CCR3_tab.ptrnDuration[CCR3_tab.crrPtrn] )
 			CCR3_SagPtrnDrtnCnt++;
@@ -852,36 +849,36 @@ bool stopSag( uint8_t channel )
 	switch (channel)
 	{
 		case 1:	
-			if ( CCR1_tab.isSag )
+			if ( CCR1_tab.state == State_Sag )
 			{	
 				CCR1_CallGDT.tabType = TabType_Norminal;
-				CCR1_CallGDT.callFromUsr = false;			
-				CCR1_CallGDT.isCall = true;			
-				CCR1_tab.isSag = false;
+				CCR1_CallGDT.callFromUsr = false;		
+				CCR1_tab.state = State_StopingSag;	
+				CCR1_CallGDT.isCall = true;	
 				
 				result = true;
 			}
 			break;
 		
 		case 2:		
-			if ( CCR2_tab.isSag )
+			if ( CCR2_tab.state == State_Sag )
 			{		
 				CCR2_CallGDT.tabType = TabType_Norminal;
-				CCR2_CallGDT.callFromUsr = false;			
-				CCR2_CallGDT.isCall = true;			
-				CCR2_tab.isSag = false;
+				CCR2_CallGDT.callFromUsr = false;		
+				CCR2_tab.state = State_StopingSag;	
+				CCR2_CallGDT.isCall = true;	
 			
 				result = true;
 			}
 			break;
 		
 		case 3:		
-			if ( CCR3_tab.isSag )
+			if ( CCR3_tab.state == State_Sag )
 			{		
 				CCR3_CallGDT.tabType = TabType_Norminal;
 				CCR3_CallGDT.callFromUsr = false;			
-				CCR3_CallGDT.isCall = true;			
-				CCR3_tab.isSag = false;
+				CCR3_tab.state = State_StopingSag;
+				CCR3_CallGDT.isCall = true;	
 			
 				result = true;
 			}
@@ -902,36 +899,36 @@ bool stopPattern( uint8_t channel )
 	switch (channel)
 	{
 		case 1:	
-			if ( CCR1_tab.isPattern )
+			if ( CCR1_tab.state == State_Pattern )
 			{						
 				CCR1_CallGDT.tabType = TabType_Norminal;
 				CCR1_CallGDT.callFromUsr = false;			
+				CCR1_tab.state = State_StopingPattern;
 				CCR1_CallGDT.isCall = true;	
-				CCR1_tab.isPattern = false;	
 			
 				result = true;
 			}
 			break;
 		
 		case 2:	
-			if ( CCR2_tab.isPattern )
+			if ( CCR2_tab.state == State_Pattern )
 			{		
 				CCR2_CallGDT.tabType = TabType_Norminal;
-				CCR2_CallGDT.callFromUsr = false;			
+				CCR2_CallGDT.callFromUsr = false;		
+				CCR2_tab.state = State_StopingPattern;	
 				CCR2_CallGDT.isCall = true;	
-				CCR2_tab.isPattern = false;	
 						
 				result = true;
 			}
 			break;
 		
 		case 3:	
-			if ( CCR3_tab.isPattern )
+			if ( CCR3_tab.state == State_Pattern )
 			{		
 				CCR3_CallGDT.tabType = TabType_Norminal;
-				CCR3_CallGDT.callFromUsr = false;			
-				CCR3_CallGDT.isCall = true;	
-				CCR3_tab.isPattern = false;				
+				CCR3_CallGDT.callFromUsr = false;		
+				CCR3_tab.state = State_StopingPattern;	
+				CCR3_CallGDT.isCall = true;			
 			
 				result = true;
 			}
