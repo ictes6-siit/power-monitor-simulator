@@ -28,8 +28,8 @@ So, each PWM value will be generated every 50kHz.
 as the EOL of any command.
 
   3.1) Generate sag
-       Usage: sag [CH] [PERCENTAGE] [DURATION]
 
+       Usage: sag [CH] [PERCENTAGE] [DURATION]
        Parameter:
         > CH          - desire channel.
         > PERCENTAGE  - scale of output compare with the nominal ampitude.
@@ -40,8 +40,8 @@ as the EOL of any command.
 
 
 	3.2) Generate pattern
-       Usage: pattern [CH] [PERCENTAGE_1] [DURATION_1] ... [PERCENTAGE_n] [DURATION_n]
 
+       Usage: pattern [CH] [PERCENTAGE_1] [DURATION_1] ... [PERCENTAGE_n] [DURATION_n]
        Parameter:
         > CH          - desire channel.
         > PERCENTAGE  - scale of output compare with the nominal ampitude.
@@ -52,20 +52,23 @@ as the EOL of any command.
           Then, 75% by 50 ms. And then, 100% by 2 s.
        
 	3.3) Stop sag
-       Usage: stopsag [CH]
 
+       Usage: stopsag [CH]
        Parameter:
         > CH          - desire channel to stop the current sag.
         
        Example: stopsag 1   - stoping sag on channel 1.
 	
 	3.4) Stop pattern
-       Usage: stoppattern [CH]
 
+       Usage: stoppattern [CH]
        Parameter:
         > CH          - desire channel.
         
        Example: stoppattern 1   - stoping the pattern generating on channel 1 and going to nominal.
        
 	3.5) Show help
+
        Usage: help
+        > CH          - desire channel.
+        
