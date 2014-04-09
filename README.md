@@ -2,6 +2,7 @@ power-monitor-simulator
 =======================
 
 1. STM32F4 Pin connection
+-------------------------
   This project uses 2 major port groups.
 
   1.1) USART command line connection
@@ -19,15 +20,17 @@ power-monitor-simulator
     
 
 2. Specification
+----------------
   This program will genenrate the varying PWM for 1000 values of 1 sine wave(50Hz).
 So, each PWM value will be generated every 50kHz.
 
 
 3. Command line
+---------------
   To generate any sag of output, you can use these command lines with the \n (0x0A or LF) 
 as the EOL of any command.
 
-  3.1) Generate sag
+	3.1) Generate sag
 
        Usage: sag [CH] [PERCENTAGE] [DURATION]
        Parameter:
