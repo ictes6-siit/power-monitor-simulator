@@ -19,6 +19,7 @@
 
 /* CMD list define -----------------------------------------------------------*/
 #define CMD_HELP 						"help"
+#define CMD_STATUS 					"status"
 #define CMD_GEN_SAG 				"sag"
 // #define CMD_GEN_SWELL 		"swell"
 #define CMD_STOP_SAG 				"stopsag"

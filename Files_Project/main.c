@@ -23,9 +23,6 @@ uint16_t TIM3_CCR_val_idx = 0;
 CCRTab_Type CCR1_tab;
 CCRTab_Type CCR2_tab;
 CCRTab_Type CCR3_tab;
-__IO uint32_t CCR1_SagPtrnDrtnCnt = 0;	//CCR1 Pattern Sag Duration Count
-__IO uint32_t CCR2_SagPtrnDrtnCnt = 0;
-__IO uint32_t CCR3_SagPtrnDrtnCnt = 0;
 
 CallingGenDutyTab_Type CCR1_CallGDT = { false, TabType_Norminal, 0, false };
 CallingGenDutyTab_Type CCR2_CallGDT = { false, TabType_Norminal, 0, false };
@@ -295,7 +292,7 @@ void EXTI0_IRQHandler(void)
   {
 		
 		
-		CCR1_tab.sagAmp = CCR1_tab.normAmp*0.5;	// amplitude
+		CCR1_tab.sagAmp = CCR1_tab.normAmp*0.5f;	// amplitude
 		CCR1_tab.sagDuration = 1000;						// sag duration
 		
 		CCR1_CallGDT.tabType = TabType_Sag;
@@ -470,12 +467,13 @@ void CCRTab_init( CCRTab_Type *CCRTab, uint16_t min, uint16_t max, float amp, fl
 	CCRTab->offset = offset;	
 	CCRTab->numOfPtrn = 0;
 	CCRTab->crrPtrn = 0;
+	CCRTab->ptrnDrtnCnt = 0;
 	CCRTab->crrTab = 1;
 	CCRTab->state = State_Norminal;
 	
 	for ( i=0; i<SAMPLER; i++ )
 	{
-		CCRTab->sin_table[i] = sin( i*_2PI_BY_SAMPLER + startDeg ) ;			
+		CCRTab->sin_table[i] = sin( i*_2PI_BY_SAMPLER + startDeg );			
 	}
 	
 	genDutyTab(CCRTab, 0, TabType_Norminal);
@@ -490,7 +488,6 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabTyp
 {
 	int16_t i;
 	uint16_t tmp, tabIdx = !CCRTab->crrTab;
-	uint8_t result = 0;
 
 //	LED( Orange, ON );
 	
@@ -513,9 +510,9 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabTyp
 		
 		case TabType_Sag:	
 			if ( CCRTab->state == State_Sag || CCRTab->state == State_StopingSag )				
-				result = 1;				// nested sag!
+				return 1;				// nested sag!
 			else if ( CCRTab->state == State_Pattern || CCRTab->state == State_StopingPattern )				
-				result = 2;				// CCR is now generating pattern!
+				return 2;				// CCR is now generating pattern!
 			else
 			{
 				for ( i=0; i<SAMPLER; i++ )
@@ -535,7 +532,7 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabTyp
 		
 		case TabType_Pattern:		
 			if ( CCRTab->state == State_Sag || CCRTab->state == State_StopingSag )				
-				result = 3;				// CCR is now generating sag!
+				return 3;				// CCR is now generating sag!
 			else
 			{	
 				for ( i=0; i<SAMPLER; i++ )
@@ -558,7 +555,7 @@ uint8_t genDutyTab(CCRTab_Type *CCRTab, uint8_t ptrnIdx , CCRTabType_Type tabTyp
 	}
 		
 //	LED( Orange, OFF );
-	return result;
+	return 0;
 }
 
 
@@ -779,8 +776,8 @@ void sagTimer(void)
   }
 	else if ( CCR1_tab.state == State_Pattern )
 	{		
-		if ( CCR1_SagPtrnDrtnCnt < CCR1_tab.ptrnDuration[CCR1_tab.crrPtrn] )
-			CCR1_SagPtrnDrtnCnt++;
+		if ( CCR1_tab.ptrnDrtnCnt < CCR1_tab.ptrnDuration[CCR1_tab.crrPtrn] )
+			CCR1_tab.ptrnDrtnCnt++;
 		else
 		{
 			/* generate new pattern */		
@@ -789,7 +786,7 @@ void sagTimer(void)
 			CCR1_CallGDT.callFromUsr = false;	
 			CCR1_CallGDT.isCall = true;			
 			
-			CCR1_SagPtrnDrtnCnt = 0;	// reset counter					
+			CCR1_tab.ptrnDrtnCnt = 0;	// reset counter					
 		}
 	}
 	
@@ -803,8 +800,8 @@ void sagTimer(void)
   }
 	else if ( CCR2_tab.state == State_Pattern )
 	{		
-		if ( CCR2_SagPtrnDrtnCnt < CCR2_tab.ptrnDuration[CCR2_tab.crrPtrn] )
-			CCR2_SagPtrnDrtnCnt++;
+		if ( CCR2_tab.ptrnDrtnCnt < CCR2_tab.ptrnDuration[CCR2_tab.crrPtrn] )
+			CCR2_tab.ptrnDrtnCnt++;
 		else
 		{
 			/* generate new pattern */		
@@ -813,7 +810,7 @@ void sagTimer(void)
 			CCR2_CallGDT.callFromUsr = false;	
 			CCR2_CallGDT.isCall = true;	
 			
-			CCR2_SagPtrnDrtnCnt = 0;	// reset counter					
+			CCR2_tab.ptrnDrtnCnt = 0;	// reset counter					
 		}
 	}
   
@@ -828,8 +825,8 @@ void sagTimer(void)
   }
 	else if ( CCR3_tab.state == State_Pattern )
 	{		
-		if ( CCR3_SagPtrnDrtnCnt < CCR3_tab.ptrnDuration[CCR3_tab.crrPtrn] )
-			CCR3_SagPtrnDrtnCnt++;
+		if ( CCR3_tab.ptrnDrtnCnt < CCR3_tab.ptrnDuration[CCR3_tab.crrPtrn] )
+			CCR3_tab.ptrnDrtnCnt++;
 		else
 		{
 			/* generate new pattern */		
@@ -838,7 +835,7 @@ void sagTimer(void)
 			CCR3_CallGDT.callFromUsr = false;	
 			CCR3_CallGDT.isCall = true;	
 			
-			CCR3_SagPtrnDrtnCnt = 0;	// reset counter					
+			CCR3_tab.ptrnDrtnCnt = 0;	// reset counter					
 		}
 	}
 }
@@ -894,7 +891,6 @@ bool stopSag( uint8_t channel )
 bool stopPattern( uint8_t channel )
 {
 	bool result = false;
-	uint8_t i;
 	
 	switch (channel)
 	{

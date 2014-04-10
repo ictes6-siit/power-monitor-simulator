@@ -101,6 +101,7 @@ typedef struct
 	float sagAmp;				
 	float *ptrnAmp;							// array of pattern amplitude
 	__IO uint32_t *ptrnDuration;
+	__IO uint32_t ptrnDrtnCnt;
 	__IO uint32_t sagDuration;
 	CCRTabState_Type state;
 } CCRTab_Type;

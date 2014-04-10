@@ -63,37 +63,48 @@ void interpretCMD(volatile char *msg, uint16_t len){
 	{
 		if ( argc == 4 && isInteger(argv[1]) && isFloat(argv[2]) && isInteger(argv[3]) )
 		{
-			getCCRTab(atoi(argv[1]))->sagAmp = getCCRTab(atoi(argv[1]))->normAmp*atof(argv[2]);	// initial amplitude
-			getCCRTab(atoi(argv[1]))->sagDuration = atoi(argv[3]);									// initial sag duration
-						
-			// generating the sag table for the given channel
-			switch ( atoi(argv[1]) )	
+			if( atoi(argv[1]) < 0 || atoi(argv[1]) >3 )
+			{					
+				sprintf((char*)text, "Generating sag:\n - Has no Ch. %s!!\n", argv[1]);
+				USART_puts(USART1, text);
+				// releasing memory allocation
+				free(msgBuf);
+				for ( i=0; i<argc; i++ )
+					free(argv[i]);
+				free(argv);
+				return;
+			}
+			
+			if ( getCCRTab(atoi(argv[1]))->state != State_Sag && getCCRTab(atoi(argv[1]))->state != State_StopingSag )
 			{
-				case 1: 						
-					getGenDutyTabCaller(1)->tabType = TabType_Sag;
-					getGenDutyTabCaller(1)->callFromUsr = true;						
-					getGenDutyTabCaller(1)->isCall = true;					
-					break;
-				case 2: 
-					getGenDutyTabCaller(2)->tabType = TabType_Sag;
-					getGenDutyTabCaller(2)->callFromUsr = true;									
-					getGenDutyTabCaller(2)->isCall = true;		
-					break;
-				case 3: 
-					getGenDutyTabCaller(3)->tabType = TabType_Sag;	
-					getGenDutyTabCaller(3)->callFromUsr = true;								
-					getGenDutyTabCaller(3)->isCall = true;	
-					break;
-				default: 	
-					sprintf((char*)text, "Generating sag:\n - Has no Ch. %s!!\n", argv[1]);
-					USART_puts(USART1, text);
-					// releasing memory allocation
-					free(msgBuf);
-					for ( i=0; i<argc; i++ )
-						free(argv[i]);
-					free(argv);
-					return;
-			}			
+				getCCRTab(atoi(argv[1]))->sagAmp = getCCRTab(atoi(argv[1]))->normAmp*atof(argv[2]);	// initial amplitude
+				getCCRTab(atoi(argv[1]))->sagDuration = atoi(argv[3]);									// initial sag duration
+							
+				// generating the sag table for the given channel
+				switch ( atoi(argv[1]) )	
+				{
+					case 1: 						
+						getGenDutyTabCaller(1)->tabType = TabType_Sag;
+						getGenDutyTabCaller(1)->callFromUsr = true;						
+						getGenDutyTabCaller(1)->isCall = true;					
+						break;
+					case 2: 
+						getGenDutyTabCaller(2)->tabType = TabType_Sag;
+						getGenDutyTabCaller(2)->callFromUsr = true;									
+						getGenDutyTabCaller(2)->isCall = true;		
+						break;
+					case 3: 
+						getGenDutyTabCaller(3)->tabType = TabType_Sag;	
+						getGenDutyTabCaller(3)->callFromUsr = true;								
+						getGenDutyTabCaller(3)->isCall = true;	
+						break;
+					default: break;
+				}		
+			}
+			else
+			{
+				USART_puts(USART1, "Generating sag:\n - Cannot generate nested sag!\n");				
+			}
 		}
 		else
 			USART_puts(USART1, "Generating sag:\n - Invalid usage!\nUsage: sag [CH] [PERCENTAGE] [DURATION]\n");
@@ -116,75 +127,86 @@ void interpretCMD(volatile char *msg, uint16_t len){
 	{
 		if ( argc >= 4 && argc%2 == 0 && isInteger(argv[1]) )
 		{			
-			numOfPtrn = (argc/2)-1;
-			
-			// check whether valid input or not
-			for ( i=0; i<numOfPtrn; i++ )
+			// check valid channel input
+			if ( atoi(argv[1]) < 0 || atoi(argv[1]) > 3 )
 			{
-				if ( !isFloat(argv[(i+1)*2]) || !isInteger(argv[(i+1)*2+1]) ) 
+				sprintf((char*)text, "Generating pattern:\n - Has no Ch. %s!!\n", argv[1]);
+				USART_puts(USART1, text);
+				// releasing memory allocation
+				free(msgBuf);
+				for ( i=0; i<argc; i++ )
+					free(argv[i]);
+				free(argv);
+				return;
+			}
+			
+			if ( getCCRTab(atoi(argv[1]))->state != State_Sag && getCCRTab(atoi(argv[1]))->state != State_StopingSag )
+			{			
+				numOfPtrn = (argc/2)-1;
+				
+				// check whether valid input or not
+				for ( i=0; i<numOfPtrn; i++ )
 				{
-					USART_puts(USART1, "Generating pattern:\n - Invalid usage!\nUsage: pattern [CH] [PERCENTAGE_1] [DURATION_1] ... [PERCENTAGE_n] [DURATION_n]\n");
-					// releasing memory allocation
-					free(msgBuf);
-					for ( i=0; i<argc; i++ )
-						free(argv[i]);
-					free(argv);
-					return;
+					if ( !isFloat(argv[(i+1)*2]) || !isInteger(argv[(i+1)*2+1]) ) 
+					{
+						USART_puts(USART1, "Generating pattern:\n - Invalid usage!\nUsage: pattern [CH] [PERCENTAGE_1] [DURATION_1] ... [PERCENTAGE_n] [DURATION_n]\n");
+						// releasing memory allocation
+						free(msgBuf);
+						for ( i=0; i<argc; i++ )
+							free(argv[i]);
+						free(argv);
+						return;
+					}
+				}			
+				
+				getCCRTab(atoi(argv[1]))->numOfPtrn = numOfPtrn;
+				
+				// clear old pattern amp and duration, if exists
+				if ( getCCRTab(atoi(argv[1]))->state == State_Pattern )
+				{				
+					getCCRTab(atoi(argv[1]))->state = State_StopingPattern;	// preventing change another pattern while update the table
+					getCCRTab(atoi(argv[1]))->ptrnDrtnCnt = 0;
+					free( getCCRTab(atoi(argv[1]))->ptrnAmp );
+					free( getCCRTab(atoi(argv[1]))->ptrnDuration );	
 				}
+				
+				// allocting new memory of amplitude and duration
+				getCCRTab(atoi(argv[1]))->ptrnAmp = (float*) malloc(sizeof(float)*numOfPtrn);
+				getCCRTab(atoi(argv[1]))->ptrnDuration = (__IO uint32_t*) malloc(sizeof(uint32_t)*numOfPtrn);	
+				
+				// assign new amp and duration 
+				for ( i=0; i<numOfPtrn; i++ )
+				{
+					getCCRTab(atoi(argv[1]))->ptrnAmp[i] = getCCRTab(atoi(argv[1]))->normAmp*atof(argv[(i+1)*2]);
+					getCCRTab(atoi(argv[1]))->ptrnDuration[i] = atoi(argv[(i+1)*2+1]);
+				}
+				
+				// generating pattern table for the given channel 
+				switch ( atoi(argv[1]) )	
+				{
+					case 1: 
+						getGenDutyTabCaller(1)->tabType = TabType_Pattern;
+						getGenDutyTabCaller(1)->ptrnIdx = 0;	
+						getGenDutyTabCaller(1)->callFromUsr = true;								
+						getGenDutyTabCaller(1)->isCall = true;		
+						break;
+					case 2: 
+						getGenDutyTabCaller(2)->tabType = TabType_Pattern;
+						getGenDutyTabCaller(2)->ptrnIdx = 0;	
+						getGenDutyTabCaller(2)->callFromUsr = true;								
+						getGenDutyTabCaller(2)->isCall = true;		
+						break;
+					case 3: 
+						getGenDutyTabCaller(3)->tabType = TabType_Pattern;
+						getGenDutyTabCaller(3)->ptrnIdx = 0;	
+						getGenDutyTabCaller(3)->callFromUsr = true;								
+						getGenDutyTabCaller(3)->isCall = true;	
+						break;
+					default: break;
+				}			
 			}
-			
-			getCCRTab(atoi(argv[1]))->numOfPtrn = numOfPtrn;
-			
-			// clear old pattern amp and duration, if exists
-			if ( getCCRTab(atoi(argv[1]))->state == State_Pattern )
-			{				
-				getCCRTab(atoi(argv[1]))->state = State_StopingPattern;	// preventing change another pattern while update the table
-				free( getCCRTab(atoi(argv[1]))->ptrnAmp );
-				free( getCCRTab(atoi(argv[1]))->ptrnDuration );	
-			}
-			
-			// allocting new memory of amplitude and duration
-			getCCRTab(atoi(argv[1]))->ptrnAmp = (float*) malloc(sizeof(float)*numOfPtrn);
-			getCCRTab(atoi(argv[1]))->ptrnDuration = (__IO uint32_t*) malloc(sizeof(uint32_t)*numOfPtrn);	
-			
-			// assign new amp and duration 
-			for ( i=0; i<numOfPtrn; i++ )
-			{
-				getCCRTab(atoi(argv[1]))->ptrnAmp[i] = getCCRTab(atoi(argv[1]))->normAmp*atof(argv[(i+1)*2]);
-				getCCRTab(atoi(argv[1]))->ptrnDuration[i] = atoi(argv[(i+1)*2+1]);
-			}
-			
-			// generating pattern table for the given channel 
-			switch ( atoi(argv[1]) )	
-			{
-				case 1: 
-					getGenDutyTabCaller(1)->tabType = TabType_Pattern;
-					getGenDutyTabCaller(1)->ptrnIdx = 0;	
-					getGenDutyTabCaller(1)->callFromUsr = true;								
-					getGenDutyTabCaller(1)->isCall = true;		
-					break;
-				case 2: 
-					getGenDutyTabCaller(2)->tabType = TabType_Pattern;
-					getGenDutyTabCaller(2)->ptrnIdx = 0;	
-					getGenDutyTabCaller(2)->callFromUsr = true;								
-					getGenDutyTabCaller(2)->isCall = true;		
-					break;
-				case 3: 
-					getGenDutyTabCaller(3)->tabType = TabType_Pattern;
-					getGenDutyTabCaller(3)->ptrnIdx = 0;	
-					getGenDutyTabCaller(3)->callFromUsr = true;								
-					getGenDutyTabCaller(3)->isCall = true;	
-					break;
-				default: 
-					sprintf((char*)text, "Generating pattern:\n - Has no Ch. %s!!\n", argv[1]);
-					USART_puts(USART1, text);
-					// releasing memory allocation
-					free(msgBuf);
-					for ( i=0; i<argc; i++ )
-						free(argv[i]);
-					free(argv);
-					return;
-			}			
+			else
+				USART_puts(USART1, "Generating pattern:\n - The system is generating sag now!\n");				
 		}
 		else
 			USART_puts(USART1, "Generating pattern:\n - Invalid usage!\nUsage: pattern [CH] [PERCENTAGE_1] [DURATION_1] ... [PERCENTAGE_n] [DURATION_n]\n");
@@ -210,6 +232,44 @@ void interpretCMD(volatile char *msg, uint16_t len){
 		USART_puts(USART1, " - Generate pattern: pattern [CH] [PERCENTAGE_1] [DURATION_1] ... [PERCENTAGE_n] [DURATION_n]\n");
 		USART_puts(USART1, " - Stop sag: stopsag [CH]\n");
 		USART_puts(USART1, " - Stop pattern: stoppattern [CH]\n");
+		USART_puts(USART1, " - Show status: status\n");
+	}
+	else if ( strcmp(argv[0], CMD_STATUS)==0 )
+	{	
+		USART_puts(USART1, "--- Status ---\n");
+		for ( i=0; i<3; i++ )
+		{
+			switch ( getCCRTab(i+1)->state )
+			{
+				case State_Norminal:
+					sprintf((char*)text, " - CH %d: Norminal\n", i+1);							
+					USART_puts(USART1, text);
+					break;
+				case State_Sag:
+					sprintf((char*)text, " - CH %d: Sag %d ms left\n", i+1, getCCRTab(i+1)->sagDuration);							
+					USART_puts(USART1, text);
+					break;
+				case State_StopingSag:
+					sprintf((char*)text, " - CH %d: Stoping Sag\n", i+1);							
+					USART_puts(USART1, text);
+					break;
+				case State_Pattern:
+					sprintf((char*)text, " - CH %d: Pattern\n", i+1);							
+					USART_puts(USART1, text);					
+					for ( j=0; j<getCCRTab(i+1)->numOfPtrn; j++ )
+					{
+						sprintf((char*)text, "  > %d: Percentage %.2f %% | Duration %d ms\n", 
+							j+1, getCCRTab(i+1)->ptrnAmp[j]/getCCRTab(i+1)->normAmp*100, getCCRTab(i+1)->ptrnDuration[j]);					
+						USART_puts(USART1, text);
+					}
+					break;
+				case State_StopingPattern:
+					sprintf((char*)text, " - CH %d: Stoping Pattern\n", i+1);							
+					USART_puts(USART1, text);
+					break;	
+			}
+		}		
+		USART_puts(USART1, "--------------\n");
 	}
 	else
 	{
