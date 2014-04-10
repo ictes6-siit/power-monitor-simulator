@@ -73,5 +73,8 @@ as the EOL of any command.
 	3.5) Show help
 
        Usage: help
-        > CH          - desire channel.
+        
+	3.6) Show status
+
+       Usage: status
         
